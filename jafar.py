@@ -26,11 +26,11 @@ class LinearModel:
 
 # Encapsulates a logistic (Bernoulli) RL policy
 class Jafar:
-    def __init__(self, n: int = 1, learning_rate: float = 1e-3):
+    def __init__(self, n: int = 1, lr: float = 1e-3, critic_lr: float = 1e-4):
         self.n = n
 
-        self.actor = LinearModel(self.n, learning_rate)
-        # self.critic = LinearModel(self.n, learning_rate)
+        self.actor = LinearModel(self.n, lr)
+        self.critic = LinearModel(self.n, critic_lr)
 
         self.trajectory = []
 
@@ -50,17 +50,9 @@ class Jafar:
 
     def reward(self, r: float):
         for xs, error in self.trajectory:
-            expected_r = 0 # self.critic.feed(xs)
-            advantage = r - expected_r
+            advantage = r - self.critic.feed(xs)
 
             self.actor.step(advantage * error, xs)
-            # self.critic.step(expected_r - r, xs)
+            self.critic.step(advantage, xs)
 
         self.trajectory = []
-
-class FakeJafar():
-    def act(self, inputs: list[x]) -> bool:
-        return True
-
-    def reward(self, _: float):
-        pass

@@ -1,28 +1,30 @@
-from jafar import Jafar, FakeJafar
+from jafar import Jafar
 from farkle import Farkle
 from statistics import mean
-from math import log
-from json import dump
+from json import load, dump
 
+NUM_EPOCHS = 100_000
 MAX_TURNS = 100
 
 # without one-hot in `reroll`: 605 ppt | P1 54.7% win | P2 45.3% win
 # with one-hot in `reroll`:    613 ppt | P1 52.5% win | P2 47.5% win
+# with A2C:                    617 ppt | P1 52.6% win | P2 47.4% win
+score_to_beat = 610
 players = [
     {
-        'reroll': Jafar(7, learning_rate=6e-2),
-        'bank': Jafar(11, learning_rate=6e-2)
+        'reroll': Jafar(9, lr=6e-2),
+        'bank': Jafar(15, lr=6e-2)
     },
     {
-        'reroll': Jafar(7, learning_rate=6e-2),
-        'bank': Jafar(11, learning_rate=6e-2)
+        'reroll': Jafar(9, lr=6e-2),
+        'bank': Jafar(15, lr=6e-2)
     }
 ]
 
 pts_per_game = []
 winners = []
 
-for epoch in range(100_000):
+for epoch in range(NUM_EPOCHS):
     game = Farkle()
     num_turns = 0
 
@@ -35,6 +37,8 @@ for epoch in range(100_000):
 
         while turn_score == 0 or players[game.turn]['reroll'].act([
             (game.my_score - game.their_score) / game.WIN_SCORE,
+            game.my_score / game.WIN_SCORE,
+            game.their_score / game.WIN_SCORE,
             turn_score / game.WIN_SCORE,
             int(num_dice_remaining == 1),
             int(num_dice_remaining == 2),
@@ -54,7 +58,11 @@ for epoch in range(100_000):
                 for score, scored_dice in scorers[1:]:
                     num_scored_dice = len(scored_dice)
                     if players[game.turn]['bank'].act([
-                        score / len(scored_dice) / game.WIN_SCORE,
+                        (game.my_score - game.their_score) / game.WIN_SCORE,
+                        game.my_score / game.WIN_SCORE,
+                        game.their_score / game.WIN_SCORE,
+                        turn_score / game.WIN_SCORE,
+                        score / num_scored_dice / game.WIN_SCORE,
                         int(num_scored_dice == 1),
                         int(num_scored_dice == 2),
                         int(num_scored_dice == 3),
@@ -85,8 +93,8 @@ for epoch in range(100_000):
         rewards[1] = (game.scores[1] - game.scores[0]) / score_sum
 
     for i, r in enumerate(rewards):
-        players[i]['reroll'].reward(r)
-        players[i]['bank'].reward(r)
+        players[i]['reroll'].reward(r - epoch / NUM_EPOCHS)
+        players[i]['bank'].reward(r - epoch / NUM_EPOCHS)
 
     winners.append(game.winner)
     pts_per_game.append(score_sum / num_turns)
@@ -94,8 +102,8 @@ for epoch in range(100_000):
     if epoch % 5000 == 0:
         print(f'{mean(pts_per_game[-5000:]):.0f} ppt | P1 {100 * (1 - mean(winners[-5000:])):.1f}% win | P2 {100 * mean(winners[-5000:]):.1f}% win')
 
-# print(players[0]['reroll'].weights, players[0]['bank'].weights)
-# print(players[1]['reroll'].weights, players[1]['bank'].weights)
-
-# with open('jafars.json', 'w') as f:
-#     dump(players, f)
+score = mean(pts_per_game[-5000:])
+if score > score_to_beat:
+    print('\nNew score to beat:', score)
+    with open('models.json', 'w') as f:
+        dump(players, f, indent=4, default=lambda o: o.__dict__)
