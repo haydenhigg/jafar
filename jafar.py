@@ -6,11 +6,8 @@ class LinearModel:
         self.n = n
         self.learning_rate = learning_rate
 
-        self.weights = [self.__random() for _ in range(self.n)]
-        self.bias = self.__random()
-
-    def __random(self) -> float:
-        return gauss(0, 1 / self.n)
+        self.weights = [gauss() for _ in range(self.n)]
+        self.bias = gauss()
 
     def feed(self, xs: list[float]) -> float:
         if len(xs) != self.n:
@@ -19,6 +16,9 @@ class LinearModel:
         return sum(w * x for w, x in zip(self.weights, xs)) + self.bias
 
     def step(self, factor: float, xs: list[float]):
+        if len(xs) != self.n:
+            raise ValueError('wrong number of inputs')
+
         for i, x in enumerate(xs):
             self.weights[i] += self.learning_rate * factor * x
 
@@ -42,9 +42,9 @@ class Jafar:
 
     def act(self, inputs: list[float]) -> bool:
         p = self.__sigmoid(self.actor.feed(inputs))
-        action = int(random() < p)
+        action = random() < p
 
-        self.trajectory.append((inputs, action - p))
+        self.trajectory.append((inputs, int(action) - p))
 
         return action
 
