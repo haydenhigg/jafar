@@ -8,16 +8,16 @@ MAX_TURNS = 100
 
 # without one-hot in `reroll`: 605 ppt | P1 54.7% win | P2 45.3% win
 # with one-hot in `reroll`:    613 ppt | P1 52.5% win | P2 47.5% win
-# with A2C:                    617 ppt | P1 52.6% win | P2 47.4% win
-score_to_beat = 614
+# with A2C+TD:                 617 ppt | P1 52.6% win | P2 47.4% win
+score_to_beat = 615
 players = [
     {
-        'reroll': Jafar(9, lr=6e-2),
-        'bank': Jafar(15, lr=6e-2)
+        'reroll': Jafar(9, lr=3e-1, critic_lr=1e-1),
+        'bank': Jafar(15, lr=3e-1, critic_lr=1e-1)
     },
     {
-        'reroll': Jafar(9, lr=6e-2),
-        'bank': Jafar(15, lr=6e-2)
+        'reroll': Jafar(9, lr=3e-1, critic_lr=1e-1),
+        'bank': Jafar(15, lr=3e-1, critic_lr=1e-1)
     }
 ]
 
@@ -89,8 +89,8 @@ for epoch in range(NUM_EPOCHS):
     rewards = [-1, -1]
     score_sum = sum(game.scores)
     if score_sum > 0:
-        rewards[0] = (game.scores[0] - game.scores[1]) / score_sum - num_turns / MAX_TURNS
-        rewards[1] = (game.scores[1] - game.scores[0]) / score_sum - num_turns / MAX_TURNS
+        rewards[0] = (game.scores[0] - game.scores[1]) / score_sum# - num_turns / MAX_TURNS
+        rewards[1] = (game.scores[1] - game.scores[0]) / score_sum# - num_turns / MAX_TURNS
 
     for i, r in enumerate(rewards):
         players[i]['reroll'].reward(r)

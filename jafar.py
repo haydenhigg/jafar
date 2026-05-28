@@ -6,8 +6,8 @@ class LinearModel:
         self.n = n
         self.learning_rate = learning_rate
 
-        self.weights = [gauss() for _ in range(self.n)]
-        self.bias = gauss()
+        self.weights = [gauss(0, learning_rate) for _ in range(self.n)]
+        self.bias = gauss(0, learning_rate)
 
     def feed(self, xs: list[float]) -> float:
         if len(xs) != self.n:
@@ -49,8 +49,13 @@ class Jafar:
         return action
 
     def reward(self, r: float):
-        for xs, error in self.trajectory:
-            advantage = r - self.critic.feed(xs)
+        T = len(self.trajectory)
+        gamma =  0.99
+
+        for t, (xs, error) in reversed(list(enumerate(self.trajectory))):
+            target = r if t == T - 1 else gamma * self.critic.feed(self.trajectory[t + 1][0])
+            # target = r * (gamma ** (T - 1 - r))
+            advantage = target - self.critic.feed(xs)
 
             self.actor.step(advantage * error, xs)
             self.critic.step(advantage, xs)
